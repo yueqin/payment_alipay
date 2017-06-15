@@ -4,6 +4,8 @@ import json
 import logging
 import urlparse
 import func
+import os
+import inspect
 
 from odoo import api, fields, models, _
 from odoo.addons.payment.models.payment_acquirer import ValidationError
@@ -90,7 +92,9 @@ class AcquirerAlipay(models.Model):
         })
         subkey = ['service','partner','_input_charset','return_url','notify_url','out_trade_no','subject','payment_type','total_fee','seller_id','body']
         need_sign = {key:alipay_tx_values[key] for key in subkey}
-        params,sign = func.buildRequestMysign(need_sign,open('rsa_private_key.pem','r').read())
+        directory_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        path = os.path.join(directory_path, 'private_key.pem')
+        params,sign = func.buildRequestMysign(need_sign,open(path,'r').read())
         alipay_tx_values.update({
             'sign':sign,
             })
