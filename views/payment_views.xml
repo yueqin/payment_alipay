@@ -2,6 +2,20 @@
 <odoo>
     <data>
 
+        <!--<record model="ir.ui.view" id="website_payment_return_list_alipay">-->
+            <!--<field name="name">website_payment_return_list_alipay</field>-->
+            <!--<field name="model">payment.transaction</field>-->
+            <!--<field name="inherit_id" ref="payment.transaction_form"/>-->
+            <!--<field name="arch" type="xml">-->
+                <!--<xpath expr="//button[@name='action_void']" position="after">-->
+                    <!--<button type="object" name="alipay_action_returns_commit" string="退款"-->
+                            <!--attrs="{'invisible': [('state', '!=', 'refunding'),-->
+                            <!--('acquirer_id','!=',%(ps_website_alipay.payment_acquirer_alipay)d)]}"-->
+                            <!--class="oe_highlight"/>-->
+                <!--</xpath>-->
+            <!--</field>-->
+        <!--</record>-->
+
         <record id="acquirer_form_alipay" model="ir.ui.view">
             <field name="name">acquirer.form.alipay</field>
             <field name="model">payment.acquirer</field>
@@ -9,32 +23,15 @@
             <field name="arch" type="xml">
                 <xpath expr='//group[@name="acquirer"]' position='after'>
                     <group attrs="{'invisible': [('provider', '!=', 'alipay')]}">
-                        <field name="alipay_partner"/>
-                        <field name="alipay_seller_id"/>
+                        <field name="alipay_app_id"/>
                         <field name="alipay_private_key"/>
-                        <field name="alipay_public_key" />
-                        <field name="alipay_sign_type" />
-                        <field name="alipay_transport" />
-                        <a colspan="2" href="https://www.alipay.com/" target="_blank">How to configure your alipay account?</a>
+                        <field name="alipay_public_key"/>
+                        <a colspan="2" href="https://www.alipay.com/" target="_blank">How to configure your alipay
+                            account?
+                        </a>
                     </group>
                 </xpath>
             </field>
         </record>
-
-        <record id="transaction_form_alipay" model="ir.ui.view">
-            <field name="name">acquirer.transaction.form.alipay</field>
-            <field name="model">payment.transaction</field>
-            <field name="inherit_id" ref="payment.transaction_form"/>
-            <field name="arch" type="xml">
-                <xpath expr='//notebook' position='inside'>
-                    <page string="Alipay TX Details">
-                        <group>
-                            <field name="alipay_txn_type"/>
-                        </group>
-                    </page>
-                </xpath>
-            </field>
-        </record>
-
     </data>
 </odoo>

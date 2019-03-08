@@ -1,120 +1,88 @@
 # coding: utf-8
-"""
- * 支付宝接口公用函数 python版本
- * 详细：该类是请求、通知返回两个文件所调用的公用函数核心处理文件
- * 版本：1.0
- * 日期：2012-07-19（官方）本接口写于2017年新春
- * 说明：
-"""
 
 import json
-import sys
-import types
-
-from Crypto.PublicKey import RSA
+from datetime import datetime
 from Crypto.Signature import PKCS1_v1_5
-from Crypto.Hash import SHA
-from base64 import b64encode,b64decode
-from urllib import urlencode
+from Crypto.PublicKey import RSA
+from Crypto.Hash import SHA256
+from base64 import decodebytes, encodebytes
 
-def smart_str(s, encoding='utf-8', strings_only=False, errors='strict'):  
-    if strings_only and isinstance(s, (types.NoneType, int)):  
-        return s  
-    if not isinstance(s, basestring):  
-        try:  
-            return str(s)  
-        except UnicodeEncodeError:  
-            if isinstance(s, Exception):  
-                return ' '.join([smart_str(arg, encoding, strings_only,  
-                        errors) for arg in s])  
-            return unicode(s).encode(encoding, errors)  
-    elif isinstance(s, unicode):  
-        return s.encode(encoding, errors)  
-    elif s and encoding != 'utf-8':  
-        return s.decode('utf-8', errors).encode(encoding, errors)  
-    else:  
-        return s 
 
-"""
- * 除去数组中的空值和签名参数
- * @param  签名参数组
- * return 去掉空值与签名参数后的新签名参数组
-"""
-def params_filter(params):  
-    ks = params.keys()  
-    ks.sort()  
-    newparams = {}  
-    prestr = ''  
-    for k in ks:  
-        v = params[k]  
-        k = smart_str(k)  
-        if k not in ('sign','sign_type') and v != '':  
-            newparams[k] = smart_str(v)  
-            prestr += '%s=%s&' % (k, newparams[k])  
-    prestr = prestr[:-1]  
-    return newparams, prestr
+def _base_params(app_id, method, private_key, **kw):
+    """
+    传入基础api参数
+    ali-pay request generator
+    :param method:
+    :param app_id:
+    :param private_key:
+    :param kwargs: dict to generate a json
+    :return:
+    """
+    all_params = dict(
+        app_id=app_id,
+        method=method,
+        charset="utf-8",
+        sign_type="RSA2",
+        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        version="1.0",
+        biz_content=json.dumps(kw)
+    )
+    all_params.update(kw)
+    all_params["sign"] = sign_data(all_params, RSA.importKey(private_key))
+    return all_params
 
-"""
- * 把数组所有元素，按照“参数=参数值”的模式用“&”字符拼接成字符串
- * @param $para 需要拼接的数组
- * return 拼接完成以后的字符串
-  函数没有用到，先放着
-"""
-def createLinkstring(values):
-    res = ""
-    for k,v in values.iteritems():
-        res += k + "=" + v + "&"
-    res = res[:-1]
-    return res
 
-"""
- * 把数组所有元素，按照“参数=参数值”的模式用“&”字符拼接成字符串，并对字符串做urlencode编码
- * @param $para 需要拼接的数组
- * return 拼接完成以后的字符串
-"""
-def createLinkstringUrlencode(values):
-    res = ""
-    for k,v in values.iteritems():
-        res += k+"="+urlencode(v)+"&"
-    res = res[:-1]
-    return res
+def ordered_data(data):
+    """
+    根据ASSCi进行升序排列
+    :param data:
+    :return:
+    """
+    complex_keys = []
+    for key, value in data.items():
+        if isinstance(value, dict):
+            complex_keys.append(key)
+    for key in complex_keys:
+        data[key] = json.dumps(data[key], separators=(',', ':'))
+    return sorted([(k, v) for k, v in data.items()])
 
-"""
- * RSA签名
- * @param data 待签名数据
- * @param private_key 商户私钥字符串
- * return 签名结果
-"""
-def rsaSign(data,private_key):
-    key = RSA.importKey(private_key)
-    hash_obj = SHA.new(data)
+
+def sign_data(data, key):
+    data.pop("sign", None)
+    # 排序后的字符串
+    unsigned_items = ordered_data(data)
+    unsigned_string = "&".join("{0}={1}".format(k, v) for k, v in unsigned_items)
+    sign = set_sign(unsigned_string.encode("utf-8"), key)
+    return sign
+
+
+def set_sign(unsigned_string, key):
+    """
+    开始计算签名
+    :param unsigned_string:
+    :param key:
+    :return:
+    """
     signer = PKCS1_v1_5.new(key)
-    d = b64encode(signer.sign(hash_obj))
-    return d
-
-"""
-*生成签名结果
-*param $para_sort 已排序要签名的数组
-* return 签名结果字符串
-"""
-def buildRequestMysign(values,private_key):
-    #把数组所有元素，按照“参数=参数值”的模式用“&”字符拼接成字符串
-    params,prestr = params_filter(values)
-    mysign = rsaSign(prestr,private_key) or ''
-    return params,mysign
+    signature = signer.sign(SHA256.new(unsigned_string))
+    # base64 编码，转换为unicode表示并移除回车
+    sign = encodebytes(signature).decode("utf8").replace("\n", "")
+    return sign
 
 
-"""
- * RSA验签
- * @param $data 待签名数据
- * @param $public_key 支付宝的公钥字符串
- * @param $sign 要校对的的签名结果
- * return 验证结果
-"""
+def _verify(raw_content, signature, key):
+    signer = PKCS1_v1_5.new(key)
+    digest = SHA256.new()
+    digest.update(raw_content.encode("utf8"))
+    if signer.verify(digest, decodebytes(signature.encode("utf8"))):
+        return True
+    return False
 
-def rsaVerify(data,public_key,sign):
-    rsakey = RSA.importKey(public_key)
-    res = SHA.new(data)
-    verifier = PKCS1_v1_5.new(rsakey)
-    return verifier.verify(res,b64decode(sign))
 
+def verify(data, signature, key):
+    if "sign_type" in data:
+        data.pop("sign_type")
+    # 排序后的字符串
+    unsigned_items = ordered_data(data)
+    message = "&".join(u"{}={}".format(k, v) for k, v in unsigned_items)
+    return _verify(message, signature, key)
