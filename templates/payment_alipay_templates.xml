@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <template id="alipay_acquirer_button">
+            <input type="hidden" name="data_set" t-att-data-action-url="tx_url" data-remove-me=""/>
+            <input type="hidden" name="app_id" t-att-value="app_id"/>
+            <input type="hidden" name="method" t-att-value="method"/>
+            <input type="hidden" name="charset" t-att-value="charset"/>
+            <input type="hidden" name="sign_type" t-att-value="sign_type"/>
+            <input type="hidden" name="timestamp" t-att-value="timestamp"/>
+            <input type="hidden" name="return_url" t-att-value="return_url"/>
+            <input type="hidden" name="notify_url" t-att-value="notify_url"/>
+            <input type="hidden" name="version" t-att-value="version"/>
+            <input type="hidden" name="sign" t-att-value="sign"/>
+            <input type="hidden" name="biz_content" t-att-value="biz_content"/>
+            <!-- submit -->
+            <button type="submit" width="100px"
+                    t-att-class="submit_class">
+                <img t-if="not submit_txt" src="/payment_alipay/static/src/img/alipay_logo.png"/>
+                <span t-if="submit_txt">
+                    <t t-esc="submit_txt"/>
+                    <span class="fa fa-long-arrow-right"/>
+                </span>
+            </button>
+        </template>
+
+    </data>
+</odoo>
